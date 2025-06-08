@@ -1,0 +1,12 @@
+torch
+pika
+requests
+sqlmodel
+sqlalchemy
+numpy
+pydantic
+pydantic-settings
+email-validator
+psycopg
+psycopg-binary
+gdown

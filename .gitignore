@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.pkl
+*.log
+*.csv
+*.json
+
+# Pytest
+.pytest_cache/
+.cache/
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+*.env
+
+# Data and model artifacts
+app/data/
+ml_worker/ml_models/
+
+# Jupyter / IPython
+.ipynb_checkpoints/
+
+# VSCode / PyCharm
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
