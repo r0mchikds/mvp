@@ -9,22 +9,39 @@ if TYPE_CHECKING:
 
 
 class ItemBase(SQLModel):
-    title: str = Field(..., min_length=1, max_length=255, description="Название товара")
-    description: Optional[str] = Field(default=None, description="Описание товара")
-    image_url: Optional[str] = Field(default=None, description="Ссылка на изображение товара")
-
+    title: str = Field(
+        ..., 
+        description="Название товара",
+        sa_column=Column(Text)  # убираем ограничение 255 символов
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="Описание товара",
+        sa_column=Column(Text)
+    )
+    image_url: Optional[str] = Field(
+        default=None,
+        description="Ссылка на изображение товара",
+        sa_column=Column(Text)
+    )
 
 class Item(ItemBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # эмбеддинг для мультимодальной модели
+    # эмбеддинги для мультимодальной модели
     embedding: Optional[str] = Field(
         default=None,
         sa_column=Column(Text),
-        description="CLIP-вектор товара"
+        description="Сырой CLIP-вектор товара (для user-вектора)"
     )
     
+    embedding_proj: Optional[str] = Field(
+        default=None,
+        sa_column=Column(Text),
+        description="Проецированный нормализованный эмбеддинг товара (для FAISS)"
+    )
+
     # поле популярности (baseline рекомендаций)
     popularity_score: int = Field(default=0, description="Счёт популярности товара")
 

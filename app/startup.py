@@ -7,7 +7,7 @@ from database.config import get_settings
 settings = get_settings()
 logger = get_logger(logger_name=__name__)
 # Путь до файла
-file_path = "data/amazon_items.csv"
+file_path = "data/amazon_items_projected.csv"
 # Ссылка (ID) на Google Drive файл
 file_id = settings.DATA_FILE_ID
 # Полученная ссылка от gdown

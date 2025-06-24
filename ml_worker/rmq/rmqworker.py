@@ -8,6 +8,7 @@ import requests
 import logging
 import json
 import numpy as np
+import faiss
 from sqlmodel import Session, select
 from models.item import Item
 from models.interaction import Interaction
@@ -28,16 +29,16 @@ logging.basicConfig(
 
 logging.getLogger('pika').setLevel(logging.INFO)
 
-class CLIPCosineModel(nn.Module):
-    def __init__(self, init_scale=2.0):
+class ContrastiveDotModel(nn.Module):
+    def __init__(self, embedding_dim):
         super().__init__()
-        self.scale = nn.Parameter(torch.tensor(init_scale))
+        self.user_projection = nn.Linear(embedding_dim, embedding_dim)
+        self.item_projection = nn.Linear(embedding_dim, embedding_dim)
 
-    def forward(self, user_vec, item_vec):
-        user_norm = F.normalize(user_vec, p=2, dim=1)
-        item_norm = F.normalize(item_vec, p=2, dim=1)
-        cosine = (user_norm * item_norm).sum(dim=1, keepdim=True)
-        return torch.sigmoid(self.scale * cosine)
+    def forward(self, user_vecs, item_vecs):
+        user_proj = F.normalize(self.user_projection(user_vecs), dim=1)
+        item_proj = F.normalize(self.item_projection(item_vecs), dim=1)
+        return user_proj, item_proj
 
 # Определяем основной класс для обработки ML задач
 class MLWorker:
@@ -52,8 +53,9 @@ class MLWorker:
         self.retry_count = 0
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = CLIPCosineModel()
-        self.model.load_state_dict(torch.load("ml_models/clip_cosine_best_model.pth", map_location=self.device))
+        embedding_dim = 200
+        self.model = ContrastiveDotModel(embedding_dim)
+        self.model.load_state_dict(torch.load("ml_models/contrastive_rating_best.pth", map_location=self.device))
         self.model.to(self.device)
         self.model.eval()
 
@@ -152,8 +154,10 @@ class MLWorker:
                             (Item.description.ilike(f"%{query_text}%"))
                         )
                     
-                    items = session.exec(base_query.order_by(Item.popularity_score.desc())).all()
-                    top_items = [item.id for item in items[:top_n]]
+                    items = session.exec(
+                        base_query.order_by(Item.popularity_score.desc()).limit(top_n)
+                    ).all()
+                    top_items = [item.id for item in items]
 
                     logger.info(f"[Fallback] Top popular items for user {user.id}: {top_items}")
                     result = json.dumps(top_items)
@@ -170,18 +174,36 @@ class MLWorker:
                 
                 items = session.exec(query).all()
 
+                # сырой вектор юзера
                 user_tensor = torch.tensor(user_emb, dtype=torch.float32).unsqueeze(0).to(self.device)
 
-                scored = []
-                for item in items:
-                    item_emb = json.loads(item.embedding)
-                    item_tensor = torch.tensor(item_emb, dtype=torch.float32).unsqueeze(0).to(self.device)
-                    with torch.no_grad():
-                        score = self.model(user_tensor, item_tensor).item()
-                    scored.append((item.id, score))
+                with torch.no_grad():
+                    user_proj = self.model.user_projection(user_tensor)
+                    user_proj = F.normalize(user_proj, dim=1)
+                
+                # Подготовим матрицу item-векторов
+                item_ids = []
+                item_vectors = []
 
-            scored.sort(key=lambda x: x[1], reverse=True)
-            top_items = [item_id for item_id, _ in scored[:top_n]]
+                for item in items:
+                    try:
+                        vec = json.loads(item.embedding_proj)
+                        item_vectors.append(vec)
+                        item_ids.append(item.id)
+                    except Exception as e:
+                        logger.warning(f"Не удалось распарсить embedding товара {item.id}: {e}")
+                
+                if not item_vectors:
+                    raise ValueError("Нет валидных item-векторов для ранжирования")
+                
+                item_matrix = np.stack(item_vectors).astype("float32")
+                user_vec = user_proj.cpu().numpy().astype("float32")
+                
+                index = faiss.IndexFlatIP(item_matrix.shape[1])
+                index.add(item_matrix)
+                _, I = index.search(user_vec, top_n)
+
+                top_items = [item_ids[i] for i in I[0]]
 
             logger.info(f"Top items for user {user_id}: {top_items}")
             result = json.dumps(top_items)

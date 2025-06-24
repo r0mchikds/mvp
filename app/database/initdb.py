@@ -13,7 +13,7 @@ import logging # log
 
 
 BASE_DIR = pathlib.Path(__file__).resolve().parent.parent
-ITEMS_CSV_PATH = BASE_DIR / "data" / "amazon_items.csv"
+ITEMS_CSV_PATH = BASE_DIR / "data" / "amazon_items_projected.csv"
 
 logger = logging.getLogger(__name__)
 if not logger.hasHandlers():
@@ -74,26 +74,48 @@ def init_db(drop_all: bool = False) -> None:
 
                 with open(ITEMS_CSV_PATH, encoding="utf-8") as f:
                     reader = csv.DictReader(f)
-                    items = []
-                    for row in reader:
+
+                    batch = []
+                    batch_size = 5000
+                    total_loaded = 0
+
+                    for idx, row in enumerate(reader):
                         try:
                             embedding = ast.literal_eval(row["embedding"])
                             embedding = json.dumps(embedding) if isinstance(embedding, list) else None
                         except Exception:
                             embedding = None
 
-                        items.append(Item(
+                        try:
+                            embedding_proj = ast.literal_eval(row["embedding_proj"])
+                            embedding_proj = json.dumps(embedding_proj) if isinstance(embedding_proj, list) else None
+                        except Exception:
+                            embedding_proj = None
+
+                        item = Item(
                             title=row["title"],
                             description=row.get("description"),
                             image_url=row.get("image_url"),
                             embedding=embedding,
+                            embedding_proj=embedding_proj,
                             popularity_score=int(row.get("popularity_score", 0))
-                        ))
-                    if not items:
-                        logger.warning("CSV пустой или не удалось распарсить embedding ни у одного товара")
-                    session.add_all(items)
-                    session.commit()
-                logger.info("Загружено товаров: %d", len(items))
+                        )
+
+                        batch.append(item)
+
+                        if len(batch) >= batch_size:
+                            session.add_all(batch)
+                            session.commit()
+                            total_loaded += len(batch)
+                            logger.info(f"Загружено товаров: {total_loaded}")
+                            batch.clear()
+                        
+                    # Commit оставшихся айтемов
+                    if batch:
+                        session.add_all(batch)
+                        session.commit()
+                        total_loaded += len(batch)
+                        logger.info(f"Загружено товаров (финальный батч): {total_loaded}")
 
                 items_in_db = session.exec(select(Item).limit(3)).all()
                 for it in items_in_db:

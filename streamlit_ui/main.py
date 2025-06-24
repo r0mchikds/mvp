@@ -106,7 +106,7 @@ def show_items(items):
     query = st.session_state.get("search_query", "")
     query_lower = query.lower() if query else None
 
-    for item in items:
+    for idx, item in enumerate(items):
         col1, col2 = st.columns([1, 5])
         with col1:
             st.image(item["image_url"], width=100)
@@ -121,7 +121,7 @@ def show_items(items):
                 st.markdown(f"**{title}**")
 
             # Раскрытие описания
-            desc_key = f"desc_expanded_{item['id']}"
+            desc_key = f"desc_expanded_{item['id']}_{idx}"
             if desc_key not in st.session_state:
                 st.session_state[desc_key] = False
 
@@ -132,17 +132,17 @@ def show_items(items):
 
             if st.session_state[desc_key]:
                 st.markdown(description, unsafe_allow_html=True)
-                if st.button("Свернуть", key=f"collapse_{item['id']}"):
+                if st.button("Свернуть", key=f"collapse_{item['id']}_{idx}"):
                     st.session_state[desc_key] = False
                     st.rerun()
             else:
                 desc_short = description[:150] + "..."
                 st.markdown(desc_short, unsafe_allow_html=True)
-                if st.button("Показать полностью", key=f"expand_{item['id']}"):
+                if st.button("Показать полностью", key=f"expand_{item['id']}_{idx}"):
                     st.session_state[desc_key] = True
                     st.rerun()
 
-            if st.button("Лайкнуть", key=f"like_{item['id']}"):
+            if st.button("Лайкнуть", key=f"like_{item['id']}_{idx}"):
                 try:
                     like_resp = requests.post(
                         f"{API_BASE}/api/interaction/like",

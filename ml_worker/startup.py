@@ -16,7 +16,7 @@ if not file_id:
     raise ValueError("MODEL_FILE_ID не задан в .env файле")
 
 # Путь до модели
-model_path = "ml_models/clip_cosine_best_model.pth"
+model_path = "ml_models/contrastive_rating_best.pth"
 gdrive_url = f"https://drive.google.com/uc?id={file_id}"
 
 # Создание директории при необходимости

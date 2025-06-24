@@ -87,7 +87,7 @@ services:
       test: ["CMD", "rabbitmq-diagnostics", "check_running"]
       interval: 20s
       timeout: 10s
-      retries: 3
+      retries: 30
     networks:
       - recs-network
   streamlit_ui:
