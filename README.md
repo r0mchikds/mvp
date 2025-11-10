@@ -168,4 +168,4 @@ docker exec -it recs-api pytest -v
 📧 **Email:** 📧 [tikhonovrs96@mail.ru](mailto:tikhonovrs96@mail.ru)  
 💬 **Telegram:** [@tinovokh](https://t.me/tinovokh)  
 🌐 **GitHub:** [r0mchikds](https://github.com/r0mchikds)  
-📄 **CV:** [Ссылка на Google Docs / PDF](https://drive.google.com/file/d/1z2GlqGx6X9XOYGcQbFFo2QkZR_bhc3Ez/view?usp=sharing)
+📄 **CV:** [Ссылка на Google Docs / PDF](https://drive.google.com/file/d/1_KP7ewDtouYh6MihGFYxnh6EkaaeMHxa/view?usp=sharing)
